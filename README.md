@@ -115,6 +115,11 @@ Open your browser at:
 
 *(If port 8089 is already in use, customize it with `PORT=8090 docker compose up -d` or `-p 8090:80`).*
 
+> [!TIP]
+> **Testing on Mobile Devices (Wi-Fi):**  
+> You can open `http://<YOUR_PC_IP>:8089` from a smartphone connected to the same local Wi-Fi network to test touch navigation, scene transitions, and audio playback.  
+> **Gyroscope / VR Note:** Mobile browsers (iOS Safari & Android Chrome) strictly require a **Secure Context (HTTPS)** to enable device motion sensors (gyroscope look-controls) and WebXR. To test gyroscope motion on mobile, expose the container via an HTTPS tunnel (e.g. `npx localtunnel --port 8089` or `ngrok http 8089`), or use Option 2 with `npm run serve:https`.
+
 #### Stopping the Editor
 ```bash
 # If run with Method A:
