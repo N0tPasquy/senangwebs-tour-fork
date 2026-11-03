@@ -80,53 +80,80 @@ Static photos preserve their natural aspect ratio (16:9, 4:3, 9:16 portrait) in 
 
 ## 🚀 Quick Start & Running the Project
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker (Recommended - No Code Required)
 
-No Node.js, source code cloning, or local build required. The pre-built image is published to GitHub Container Registry (`ghcr.io/n0tpasquy/senangwebs-tour-fork:latest`) and serves the **Visual Editor directly at the root (`/`)**:
+> [!NOTE]
+> Ensure [Docker](https://www.docker.com/) is installed and running on your system (Docker Desktop for Windows/macOS or Docker Engine for Linux).
 
-#### Using Docker Compose
-```bash
-docker compose up -d
-```
+Launch the **Visual 360° Tour Editor** immediately without cloning the repository or installing Node.js:
 
-#### Or Run Directly (No Files Required)
+#### Method A: Direct Command (Zero Files)
+Open your terminal and run:
 ```bash
 docker run -d -p 8089:80 --name senangwebs-tour-editor ghcr.io/n0tpasquy/senangwebs-tour-fork:latest
 ```
 
-Open **`http://localhost:8089`** in your browser.
-
-To stop the container:
+#### Method B: Docker Compose
+Create a `docker-compose.yml` file (or use the one in this repository):
+```yaml
+services:
+  swt-editor:
+    image: ghcr.io/n0tpasquy/senangwebs-tour-fork:latest
+    container_name: senangwebs-tour-editor
+    ports:
+      - "${PORT:-8089}:80"
+    restart: unless-stopped
+```
+Then start the container:
 ```bash
-docker compose down
-# Or if run directly:
+docker compose up -d
+```
+
+#### 🌐 Accessing the Editor
+Open your browser at:
+👉 **`http://localhost:8089`**
+
+*(If port 8089 is already in use, customize it with `PORT=8090 docker compose up -d` or `-p 8090:80`).*
+
+#### Stopping the Editor
+```bash
+# If run with Method A:
 docker stop senangwebs-tour-editor && docker rm senangwebs-tour-editor
+
+# If run with Method B:
+docker compose down
 ```
 
 ---
 
 ### Option 2: Local Node.js Development
 
-Requires Node.js 18+:
+Requires **Node.js 18+**:
 
-1. **Install and build**:
+1. **Clone the repository**:
    ```bash
-   npm install
-   npm run build     # Compiles bundles into dist/ (0 warnings)
+   git clone https://github.com/N0tPasquy/senangwebs-tour-fork.git
+   cd senangwebs-tour-fork
    ```
 
-2. **Start local development server**:
+2. **Install and build**:
+   ```bash
+   npm install
+   npm run build     # Compiles production bundles into dist/ (0 warnings)
+   ```
+
+3. **Start local development server**:
    ```bash
    npm run serve     # HTTP server on http://localhost:8089
    ```
    Open **`http://localhost:8089/examples/editor.html`**.
 
-3. **Start local server with HTTPS** *(for mobile phone testing on Wi-Fi)*:
+4. **Start local server with HTTPS** *(for mobile phone testing on Wi-Fi)*:
    ```bash
    npm run serve:https   # HTTPS server on https://localhost:8089
    ```
 
-4. **Run unit tests**:
+5. **Run unit tests**:
    ```bash
    npm test          # Runs all 205 automated unit tests
    ```
