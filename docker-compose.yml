@@ -1,6 +1,6 @@
 services:
   swt-editor:
-    image: ghcr.io/n0tpasquy/senangwebs-tour:latest
+    image: ghcr.io/n0tpasquy/senangwebs-tour-fork:latest
     container_name: senangwebs-tour-editor
     restart: unless-stopped
     ports:
