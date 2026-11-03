@@ -1,8 +1,6 @@
 services:
   swt-editor:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/n0tpasquy/senangwebs-tour:latest
     container_name: senangwebs-tour-editor
     restart: unless-stopped
     ports:

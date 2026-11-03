@@ -82,10 +82,16 @@ Static photos preserve their natural aspect ratio (16:9, 4:3, 9:16 portrait) in 
 
 ### Option 1: Docker (Recommended)
 
-No Node.js or local compiler required. The pre-configured container compiles the production bundles and serves the **Visual Editor directly at the root (`/`)**:
+No Node.js, source code cloning, or local build required. The pre-built image is published to GitHub Container Registry (`ghcr.io/n0tpasquy/senangwebs-tour:latest`) and serves the **Visual Editor directly at the root (`/`)**:
 
+#### Using Docker Compose
 ```bash
-docker compose up -d --build
+docker compose up -d
+```
+
+#### Or Run Directly (No Files Required)
+```bash
+docker run -d -p 8089:80 --name senangwebs-tour-editor ghcr.io/n0tpasquy/senangwebs-tour:latest
 ```
 
 Open **`http://localhost:8089`** in your browser.
@@ -93,6 +99,8 @@ Open **`http://localhost:8089`** in your browser.
 To stop the container:
 ```bash
 docker compose down
+# Or if run directly:
+docker stop senangwebs-tour-editor && docker rm senangwebs-tour-editor
 ```
 
 ---
