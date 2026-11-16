@@ -107,19 +107,29 @@ class ExportManager {
    * This ensures the exported HTML doesn't need the SenangStart icons library
    */
   async generateJSONWithBakedIcons() {
-    // Deep-clone so baked icons never modify the live editor project state
-    const jsonData = deepClone(this.generateJSON());
-    
+    const raw = this.generateJSON();
+    // Shallow-clone scenes and hotspots to avoid duplicating massive base64 image strings
+    const jsonData = {
+      ...raw,
+      scenes: (raw.scenes || []).map((scene) => ({
+        ...scene,
+        hotspots: (scene.hotspots || []).map((h) => ({
+          ...h,
+          appearance: { ...(h.appearance || {}) },
+        })),
+      })),
+    };
+
     // Process icons SEQUENTIALLY: IconRenderer uses a single shared render
     // container, so parallel generation would corrupt captured icons.
     for (const scene of jsonData.scenes) {
       for (const hotspot of scene.hotspots) {
         const icon = hotspot.appearance?.icon;
-        
+
         // Skip if no icon or if it's already a data URL or URL
         if (!icon) continue;
         if (icon.startsWith('data:') || icon.startsWith('http') || icon.startsWith('/')) continue;
-        
+
         // Generate SVG data URL from icon name
         try {
           const color = hotspot.appearance?.color || '#ffffff';
@@ -132,7 +142,7 @@ class ExportManager {
         }
       }
     }
-    
+
     return jsonData;
   }
 
@@ -142,7 +152,13 @@ class ExportManager {
   exportJSON() {
     try {
       const jsonData = this.generateJSON();
-      const json = JSON.stringify(jsonData, null, 2);
+      let json;
+      try {
+        json = JSON.stringify(jsonData, null, 2);
+      } catch (formatErr) {
+        // Fallback to compact unindented JSON if memory limits are exceeded
+        json = JSON.stringify(jsonData);
+      }
 
       const title = this.editor.config.title || "tour";
       const filename = sanitizeId(title) + ".json";
@@ -163,7 +179,22 @@ class ExportManager {
   async copyJSON() {
     try {
       const jsonData = this.generateJSON();
-      const json = JSON.stringify(jsonData, null, 2);
+      let json;
+      try {
+        json = JSON.stringify(jsonData, null, 2);
+      } catch (formatErr) {
+        json = JSON.stringify(jsonData);
+      }
+
+      // Check size: clipboard APIs fail on huge payloads (> 5MB)
+      if (json.length > 5 * 1024 * 1024) {
+        showToast(
+          `Project is too large for clipboard (${(json.length / 1048576).toFixed(1)} MB). Please use "Download JSON".`,
+          "warning",
+          5000
+        );
+        return false;
+      }
 
       const success = await copyToClipboard(json);
       if (success) {
@@ -189,6 +220,18 @@ class ExportManager {
     const title = escapeHtml(rawTitle);
     // Pin the runtime version so exported viewers are reproducible
     const runtimeVersion = packageInfo.version;
+    const serializedConfig = safeJsonStringify(jsonData);
+
+    // If exported from a web server (e.g. Altervista), add origin server fallback
+    const hostBase = (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null' && !window.location.protocol.startsWith('file'))
+      ? window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '') + '/swt.min.js'
+      : '';
+    const originFallback = hostBase ? `
+    <script>
+      if (typeof SWT === "undefined") {
+        document.write('<script src="${hostBase}"><\\/script>');
+      }
+    </script>` : '';
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -196,17 +239,17 @@ class ExportManager {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
-    <!-- SWT Library: try same folder first (for web hosting / Altervista), then ../dist/ (local dev), then CDN -->
+    <!-- SWT Library: 1. same folder (fast/offline) -> 2. local dev -> 3. server host -> 4. jsDelivr GitHub CDN -->
     <script src="swt.min.js?v=${runtimeVersion}"></script>
     <script>
       if (typeof SWT === "undefined") {
         document.write('<script src="../dist/swt.min.js"><\\/script>');
       }
-    </script>
+    </script>${originFallback}
     <script>
       if (typeof SWT === "undefined") {
         document.write(
-          '<script src="https://unpkg.com/senangwebs-tour@${runtimeVersion}/dist/swt.min.js"><\\/script>'
+          '<script src="https://cdn.jsdelivr.net/gh/N0tPasquy/senangwebs-tour-fork@master/dist/swt.min.js"><\\/script>'
         );
       }
     </script>
@@ -221,10 +264,7 @@ class ExportManager {
     <script>
       // Tour configuration
       // Serialized with <, >, & escaped so the data cannot break out of this script
-      const tourConfig = ${safeJsonStringify(jsonData, 8)
-        .split("\n")
-        .map((line, i) => (i === 0 ? line : "      " + line))
-        .join("\n")};
+      const tourConfig = ${serializedConfig};
 
       // Initialize tour when scene is loaded (handling both already-loaded and pending load)
       const sceneEl = document.querySelector("#tour-container");
@@ -268,25 +308,11 @@ class ExportManager {
   }
 
   /**
-   * Show export preview in modal
+   * Show export modal
    */
   showExportPreview() {
-    try {
-      const jsonData = this.generateJSON();
-      const json = JSON.stringify(jsonData, null, 2);
-
-      const preview = document.getElementById("exportPreview");
-      if (preview) {
-        preview.textContent = json;
-      }
-
-      showModal("exportModal");
-      return true;
-    } catch (error) {
-      console.error("Failed to show export preview:", error);
-      showToast("Failed to generate preview", "error");
-      return false;
-    }
+    showModal("exportModal");
+    return true;
   }
 }
 

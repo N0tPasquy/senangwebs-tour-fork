@@ -578,7 +578,74 @@ var SWTEditor = (function () {
       }
 
       /**
-       * Import project from file
+       * Extract tour configuration from exported viewer HTML
+       * @param {string} html - HTML file content
+       * @returns {Object} Parsed tour configuration object
+       */
+      extractTourConfigFromHtml(html) {
+        const tourConfigIdx = html.indexOf("tourConfig");
+        if (tourConfigIdx === -1) {
+          throw new Error("No virtual tour configuration found in HTML file");
+        }
+
+        const eqIdx = html.indexOf("=", tourConfigIdx);
+        if (eqIdx === -1) {
+          throw new Error("Invalid tour configuration assignment in HTML");
+        }
+
+        const startBrace = html.indexOf("{", eqIdx);
+        if (startBrace === -1) {
+          throw new Error("No object start '{' found for tour configuration");
+        }
+
+        // Parse balanced curly braces, respecting string literals and escapes
+        let depth = 0;
+        let inString = false;
+        let escape = false;
+        let endBrace = -1;
+
+        for (let i = startBrace; i < html.length; i++) {
+          const ch = html[i];
+          if (escape) {
+            escape = false;
+            continue;
+          }
+          if (ch === "\\") {
+            escape = true;
+            continue;
+          }
+          if (ch === '"') {
+            inString = !inString;
+            continue;
+          }
+          if (!inString) {
+            if (ch === "{") {
+              depth++;
+            } else if (ch === "}") {
+              depth--;
+              if (depth === 0) {
+                endBrace = i;
+                break;
+              }
+            }
+          }
+        }
+
+        if (endBrace === -1) {
+          throw new Error("Mismatched braces while parsing tourConfig in HTML");
+        }
+
+        const jsonString = html.substring(startBrace, endBrace + 1);
+        try {
+          return JSON.parse(jsonString);
+        } catch (parseError) {
+          console.error("JSON.parse failed on extracted tourConfig:", parseError);
+          throw new Error("Corrupted tour configuration inside HTML: " + parseError.message);
+        }
+      }
+
+      /**
+       * Import project from file (supports both .json and exported viewer .html)
        */
       async importFromFile(file) {
         return new Promise((resolve, reject) => {
@@ -586,11 +653,43 @@ var SWTEditor = (function () {
 
           reader.onload = (e) => {
             try {
-              const projectData = JSON.parse(e.target.result);
+              const content = e.target.result;
+              let projectData;
+
+              const fileNameLower = (file.name || '').toLowerCase();
+              const trimmedLower = content.trim().toLowerCase();
+              const isHtml = fileNameLower.endsWith('.html') || 
+                             fileNameLower.endsWith('.htm') || 
+                             trimmedLower.startsWith('<!doctype') || 
+                             trimmedLower.startsWith('<html') ||
+                             content.includes('tourConfig');
+
+              try {
+                if (isHtml) {
+                  projectData = this.extractTourConfigFromHtml(content);
+                } else {
+                  projectData = JSON.parse(content);
+                }
+              } catch (primaryError) {
+                // Dual fallback: if HTML extraction failed, try JSON.parse; if JSON.parse failed, try HTML extraction
+                try {
+                  if (isHtml) {
+                    projectData = JSON.parse(content);
+                  } else {
+                    projectData = this.extractTourConfigFromHtml(content);
+                  }
+                } catch (fallbackError) {
+                  throw primaryError;
+                }
+              }
+
               resolve(projectData);
             } catch (error) {
               console.error("Failed to parse project file:", error);
-              showToast("Invalid project file", "error");
+              const errorMsg = error.message && error.message.includes("tour configuration")
+                ? error.message
+                : "Invalid or corrupt project file";
+              showToast(errorMsg, "error");
               reject(error);
             }
           };
@@ -5777,19 +5876,29 @@ var SWTEditor = (function () {
        * This ensures the exported HTML doesn't need the SenangStart icons library
        */
       async generateJSONWithBakedIcons() {
-        // Deep-clone so baked icons never modify the live editor project state
-        const jsonData = deepClone(this.generateJSON());
-        
+        const raw = this.generateJSON();
+        // Shallow-clone scenes and hotspots to avoid duplicating massive base64 image strings
+        const jsonData = {
+          ...raw,
+          scenes: (raw.scenes || []).map((scene) => ({
+            ...scene,
+            hotspots: (scene.hotspots || []).map((h) => ({
+              ...h,
+              appearance: { ...(h.appearance || {}) },
+            })),
+          })),
+        };
+
         // Process icons SEQUENTIALLY: IconRenderer uses a single shared render
         // container, so parallel generation would corrupt captured icons.
         for (const scene of jsonData.scenes) {
           for (const hotspot of scene.hotspots) {
             const icon = hotspot.appearance?.icon;
-            
+
             // Skip if no icon or if it's already a data URL or URL
             if (!icon) continue;
             if (icon.startsWith('data:') || icon.startsWith('http') || icon.startsWith('/')) continue;
-            
+
             // Generate SVG data URL from icon name
             try {
               const color = hotspot.appearance?.color || '#ffffff';
@@ -5802,7 +5911,7 @@ var SWTEditor = (function () {
             }
           }
         }
-        
+
         return jsonData;
       }
 
@@ -5812,7 +5921,13 @@ var SWTEditor = (function () {
       exportJSON() {
         try {
           const jsonData = this.generateJSON();
-          const json = JSON.stringify(jsonData, null, 2);
+          let json;
+          try {
+            json = JSON.stringify(jsonData, null, 2);
+          } catch (formatErr) {
+            // Fallback to compact unindented JSON if memory limits are exceeded
+            json = JSON.stringify(jsonData);
+          }
 
           const title = this.editor.config.title || "tour";
           const filename = sanitizeId$1(title) + ".json";
@@ -5833,7 +5948,22 @@ var SWTEditor = (function () {
       async copyJSON() {
         try {
           const jsonData = this.generateJSON();
-          const json = JSON.stringify(jsonData, null, 2);
+          let json;
+          try {
+            json = JSON.stringify(jsonData, null, 2);
+          } catch (formatErr) {
+            json = JSON.stringify(jsonData);
+          }
+
+          // Check size: clipboard APIs fail on huge payloads (> 5MB)
+          if (json.length > 5 * 1024 * 1024) {
+            showToast(
+              `Project is too large for clipboard (${(json.length / 1048576).toFixed(1)} MB). Please use "Download JSON".`,
+              "warning",
+              5000
+            );
+            return false;
+          }
 
           const success = await copyToClipboard(json);
           if (success) {
@@ -5859,6 +5989,18 @@ var SWTEditor = (function () {
         const title = escapeHtml(rawTitle);
         // Pin the runtime version so exported viewers are reproducible
         const runtimeVersion = packageInfo.version;
+        const serializedConfig = safeJsonStringify(jsonData);
+
+        // If exported from a web server (e.g. Altervista), add origin server fallback
+        const hostBase = (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null' && !window.location.protocol.startsWith('file'))
+          ? window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '') + '/swt.min.js'
+          : '';
+        const originFallback = hostBase ? `
+    <script>
+      if (typeof SWT === "undefined") {
+        document.write('<script src="${hostBase}"><\\/script>');
+      }
+    </script>` : '';
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -5866,17 +6008,17 @@ var SWTEditor = (function () {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
-    <!-- SWT Library: try same folder first (for web hosting / Altervista), then ../dist/ (local dev), then CDN -->
+    <!-- SWT Library: 1. same folder (fast/offline) -> 2. local dev -> 3. server host -> 4. jsDelivr GitHub CDN -->
     <script src="swt.min.js?v=${runtimeVersion}"></script>
     <script>
       if (typeof SWT === "undefined") {
         document.write('<script src="../dist/swt.min.js"><\\/script>');
       }
-    </script>
+    </script>${originFallback}
     <script>
       if (typeof SWT === "undefined") {
         document.write(
-          '<script src="https://unpkg.com/senangwebs-tour@${runtimeVersion}/dist/swt.min.js"><\\/script>'
+          '<script src="https://cdn.jsdelivr.net/gh/N0tPasquy/senangwebs-tour-fork@master/dist/swt.min.js"><\\/script>'
         );
       }
     </script>
@@ -5891,10 +6033,7 @@ var SWTEditor = (function () {
     <script>
       // Tour configuration
       // Serialized with <, >, & escaped so the data cannot break out of this script
-      const tourConfig = ${safeJsonStringify(jsonData, 8)
-        .split("\n")
-        .map((line, i) => (i === 0 ? line : "      " + line))
-        .join("\n")};
+      const tourConfig = ${serializedConfig};
 
       // Initialize tour when scene is loaded (handling both already-loaded and pending load)
       const sceneEl = document.querySelector("#tour-container");
@@ -5938,25 +6077,11 @@ var SWTEditor = (function () {
       }
 
       /**
-       * Show export preview in modal
+       * Show export modal
        */
       showExportPreview() {
-        try {
-          const jsonData = this.generateJSON();
-          const json = JSON.stringify(jsonData, null, 2);
-
-          const preview = document.getElementById("exportPreview");
-          if (preview) {
-            preview.textContent = json;
-          }
-
-          showModal("exportModal");
-          return true;
-        } catch (error) {
-          console.error("Failed to show export preview:", error);
-          showToast("Failed to generate preview", "error");
-          return false;
-        }
+        showModal("exportModal");
+        return true;
       }
     };
 
@@ -7334,12 +7459,21 @@ var SWTEditor = (function () {
                 initialSceneId = validScenes[0].id;
             }
 
+            const config = {
+                title: (data.config && data.config.title) || data.title || 'My Virtual Tour',
+                description: (data.config && data.config.description) || data.description || '',
+                initialSceneId
+            };
+
+            if (data.audio || (data.config && data.config.audio)) {
+                config.audio = data.audio || data.config.audio;
+            }
+            if (data.welcome || (data.config && data.config.welcome)) {
+                config.welcome = data.welcome || data.config.welcome;
+            }
+
             return {
-                config: {
-                    title: (data.config && data.config.title) || data.title || 'My Virtual Tour',
-                    description: (data.config && data.config.description) || data.description || '',
-                    initialSceneId
-                },
+                config,
                 scenes: validScenes
             };
         }

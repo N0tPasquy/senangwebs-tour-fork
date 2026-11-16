@@ -34,7 +34,7 @@ A powerful, data-driven 360° virtual tour system built on A-Frame WebVR. Create
 
 ## 🎨 Visual Tour Editor
 
-The visual editor allows anyone to construct complete 360° virtual tours without writing code. Tours are stored locally in the browser (IndexedDB / localStorage) and can be exported as portable JSON or standalone self-contained HTML viewers.
+The visual editor allows anyone to construct complete 360° virtual tours without writing code. Tours are stored locally in the browser (IndexedDB / localStorage), can be imported from either JSON configurations or exported standalone HTML files, and exported as portable JSON or standalone self-contained HTML viewers.
 
 ### Interface & Configuration Tabs
 
@@ -74,7 +74,7 @@ Static photos preserve their natural aspect ratio (16:9, 4:3, 9:16 portrait) in 
 * **Protected Authoring Mode** - Automatic gaze countdowns are deactivated while editing to prevent accidental navigation.
 * **Looping Background Audio** - Upload MP3/WAV tracks or paste stream URLs. Features a volume slider (scaled with a safe 35% output ceiling for ambient listening), one-click mute/removal, and automatic preview audio playback.
 * **Welcome Popup Modal** - Configurable launch popup ("Start Tour") providing the explicit user gesture required by mobile browsers (iOS & Android) to unlock audio autoplay.
-* **Export Flexibility** - Download as portable JSON configuration or export a standalone single-file HTML viewer.
+* **Universal Import & Export** - Download portable JSON configurations or standalone single-file HTML viewers with instant modal response even on large tours. Re-import either `.json` or exported `.html` files at any time with full preservation of scenes, hotspots, audio, and welcome modal settings.
 
 ---
 
@@ -111,7 +111,7 @@ Requires **Node.js 18+**:
 
 3. **Run unit tests**:
    ```bash
-   npm test          # Runs all 205 automated unit tests
+   npm test          # Runs all 214 automated unit tests
    ```
 
 > [!TIP]
@@ -237,7 +237,7 @@ Subscribe to tour events on the `<a-scene>` element using `tour.addEventListener
 ## 📖 Documentation & Deep Dives
 
 * **[EDITOR.md](EDITOR.md)** — **Custom Editor Development Guide**: Comprehensive documentation for developers looking to build custom editors, use declarative HTML attributes (`data-swt-*`), customize CSS themes, or integrate with custom backend APIs.
-* **[SKILLS.md](SKILLS.md)** — Developer cheatsheet, architecture reference, and test suite overview (205 tests).
+* **[SKILLS.md](SKILLS.md)** — Developer cheatsheet, architecture reference, and test suite overview (214 tests).
 
 ---
 

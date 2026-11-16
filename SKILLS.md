@@ -88,7 +88,7 @@ ExportManager           // export to JSON or standalone HTML
 - Lightweight viewer: standalone HTML export with baked icon SVG data URLs
 - Hotspot interactions: navigate between scenes, gaze countdown, in-scene photo cards with 2s gaze close
 - Mobile and VR-ready: touch, mouse, Cardboard, Oculus, WebXR
-- JSON export/import for project portability
+- Universal JSON and standalone HTML export/import for complete project portability
 - High performance: `refreshHotspots()` DOM updates without tearing down WebGL or reloading 360 panoramas
 
 ## Implementation Guidance
@@ -105,6 +105,6 @@ ExportManager           // export to JSON or standalone HTML
 
 ```bash
 npm run build                      # rollup build
-node tests/test-gaze-navigation.js  # 205 unit tests covering gaze, photo cards, scale, audio, and export
+node tests/test-gaze-navigation.js  # 214 unit tests covering gaze, photo cards, scale, audio, and universal HTML/JSON export/import
 npm run serve                      # http-server on port 8089 for manual testing
 ```

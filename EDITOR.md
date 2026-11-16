@@ -126,7 +126,7 @@ The SWT editor uses a **six-controller pattern** with these main classes:
 | `HotspotEditor`         | Hotspot placement and editing                       | `addHotspot()`, `updateHotspot()`, `removeHotspot()`       |
 | `PreviewController`     | A-Frame preview management                          | `loadScene()`, `refreshHotspots()`, `pointCameraToHotspot()`|
 | `UIController`          | DOM rendering and updates                           | `renderSceneList()`, `renderHotspotList()`                 |
-| `ProjectStorageManager` | LocalStorage persistence                            | `saveProject()`, `loadProject()`                           |
+| `ProjectStorageManager` | Project persistence & file import                   | `saveProject()`, `loadProject()`, `importFromFile()`       |
 | `ExportManager`         | JSON and HTML export/import                         | `generateJSON()`, `loadJSON()`, `exportViewerHTML()`       |
 
 ## Building a Custom Editor
@@ -387,7 +387,7 @@ if (editor.previewController?.tourInstance) {
 - **Mobile & Blob Streaming Optimization:** Large Base64 audio data URLs are automatically converted into in-memory `Blob` URLs (`URL.createObjectURL`), bypassing mobile browser memory limits and preventing decoding freezes on Android and iOS devices.
 - **Mobile Autoplay Policy Handling:** If direct autoplay is restricted on initial page load, high-priority capture-phase listeners (`touchend`, `pointerup`, `click`, `keydown`) seamlessly start playback on the user's first touch or interaction. Playback is also re-verified on scene transitions.
 - **Preview Integration:** When toggling the preview mode (`previewBtn`), background audio automatically starts playing and immediately pauses upon exiting preview mode (or pressing Escape).
-- **Import/Export:** `exportManager.generateJSON()` includes the `audio` configuration, and `exportManager.loadJSON(data)` restores both the audio state and UI controls automatically.
+- **Import/Export:** `exportManager.generateJSON()` includes the `audio` configuration, and both JSON and HTML project imports restore the audio state and UI controls automatically.
 
 ### Welcome Popup (Audio Activation on Mobile)
 
@@ -399,6 +399,7 @@ The editor allows configuring an introductory welcome modal dialog for standalon
   - `tourWelcomeDesc` (textarea): Introductory description / instructions.
   - `tourWelcomeBtnText` (text): Button text (e.g. `"Start Tour"`).
 - **Suppressed in Editor Mode:** To keep the authoring environment clean, the welcome modal is suppressed while in editor preview mode (`isEditor: true`). It displays automatically upon launch in exported tours.
+- **Import/Export Preservation:** Welcome configuration is fully serialized in `exportManager.generateJSON()` and preserved during both JSON and HTML project imports.
 
 ### Custom Export
 
@@ -574,10 +575,12 @@ editor.on('project:save', (e) => showSaveConfirmation());
 
 ### Export Tour Data
 
+The editor provides high-performance project export supporting both raw JSON data and standalone single-file HTML viewers. The modal dialog opens instantaneously without freezing or memory lags, even on huge projects containing dozens of high-resolution 360° panoramas (e.g. 24+ scenes / 300MB+ Base64 data).
+
 ```javascript
 // Generate JSON (same format as viewer expects)
 const tourData = editor.exportManager.generateJSON();
-// Returns: { initialScene: "scene-1", scenes: [...] }
+// Returns: { initialScene: "scene-1", scenes: [...], audio: {...}, welcome: {...} }
 
 // Export as downloadable JSON file
 editor.exportManager.exportJSON();
@@ -589,9 +592,28 @@ await editor.exportManager.exportViewerHTML();
 await editor.exportManager.copyJSON();
 ```
 
+### Universal Import (JSON & Standalone HTML)
+
+The editor allows importing existing virtual tours from both raw JSON files and exported standalone `.html` viewer files:
+
+- **Automatic Format Detection:** The file input (`#importUpload`, accepting `.json,.html,.htm`) and the `editor.storageManager.importFromFile(file)` method automatically detect whether the uploaded file is JSON or HTML.
+- **Embedded Config Extraction:** For standalone HTML viewer files, the embedded `tourConfig` declaration is extracted automatically using a balanced-brace parser respecting string literals and escapes.
+- **Full State Restoration:** Restores all scenes, equirectangular panoramas, hotspots (actions, targets, scale, gazes, cards), background audio configuration, and welcome popup settings.
+
+```javascript
+// Programmatically import a File object (JSON or HTML)
+const fileInput = document.getElementById("importUpload");
+fileInput.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    await editor.storageManager.importFromFile(file);
+  }
+});
+```
+
 ### Load Tour Data
 
-Use `loadJSON()` to load an entire tour configuration (inverse of `generateJSON()`):
+Use `loadJSON()` to load an entire tour configuration directly from an object (inverse of `generateJSON()`):
 
 ```javascript
 // Load from exported JSON

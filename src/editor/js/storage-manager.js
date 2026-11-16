@@ -315,7 +315,74 @@ class ProjectStorageManager {
   }
 
   /**
-   * Import project from file
+   * Extract tour configuration from exported viewer HTML
+   * @param {string} html - HTML file content
+   * @returns {Object} Parsed tour configuration object
+   */
+  extractTourConfigFromHtml(html) {
+    const tourConfigIdx = html.indexOf("tourConfig");
+    if (tourConfigIdx === -1) {
+      throw new Error("No virtual tour configuration found in HTML file");
+    }
+
+    const eqIdx = html.indexOf("=", tourConfigIdx);
+    if (eqIdx === -1) {
+      throw new Error("Invalid tour configuration assignment in HTML");
+    }
+
+    const startBrace = html.indexOf("{", eqIdx);
+    if (startBrace === -1) {
+      throw new Error("No object start '{' found for tour configuration");
+    }
+
+    // Parse balanced curly braces, respecting string literals and escapes
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    let endBrace = -1;
+
+    for (let i = startBrace; i < html.length; i++) {
+      const ch = html[i];
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (!inString) {
+        if (ch === "{") {
+          depth++;
+        } else if (ch === "}") {
+          depth--;
+          if (depth === 0) {
+            endBrace = i;
+            break;
+          }
+        }
+      }
+    }
+
+    if (endBrace === -1) {
+      throw new Error("Mismatched braces while parsing tourConfig in HTML");
+    }
+
+    const jsonString = html.substring(startBrace, endBrace + 1);
+    try {
+      return JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error("JSON.parse failed on extracted tourConfig:", parseError);
+      throw new Error("Corrupted tour configuration inside HTML: " + parseError.message);
+    }
+  }
+
+  /**
+   * Import project from file (supports both .json and exported viewer .html)
    */
   async importFromFile(file) {
     return new Promise((resolve, reject) => {
@@ -323,11 +390,43 @@ class ProjectStorageManager {
 
       reader.onload = (e) => {
         try {
-          const projectData = JSON.parse(e.target.result);
+          const content = e.target.result;
+          let projectData;
+
+          const fileNameLower = (file.name || '').toLowerCase();
+          const trimmedLower = content.trim().toLowerCase();
+          const isHtml = fileNameLower.endsWith('.html') || 
+                         fileNameLower.endsWith('.htm') || 
+                         trimmedLower.startsWith('<!doctype') || 
+                         trimmedLower.startsWith('<html') ||
+                         content.includes('tourConfig');
+
+          try {
+            if (isHtml) {
+              projectData = this.extractTourConfigFromHtml(content);
+            } else {
+              projectData = JSON.parse(content);
+            }
+          } catch (primaryError) {
+            // Dual fallback: if HTML extraction failed, try JSON.parse; if JSON.parse failed, try HTML extraction
+            try {
+              if (isHtml) {
+                projectData = JSON.parse(content);
+              } else {
+                projectData = this.extractTourConfigFromHtml(content);
+              }
+            } catch (fallbackError) {
+              throw primaryError;
+            }
+          }
+
           resolve(projectData);
         } catch (error) {
           console.error("Failed to parse project file:", error);
-          showToast("Invalid project file", "error");
+          const errorMsg = error.message && error.message.includes("tour configuration")
+            ? error.message
+            : "Invalid or corrupt project file";
+          showToast(errorMsg, "error");
           reject(error);
         }
       };

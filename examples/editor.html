@@ -33,7 +33,7 @@
       <button class="btn btn-secondary" id="newBtn" title="New Project">
         New
       </button>
-      <button class="btn btn-secondary" id="importBtn" title="Import JSON">
+      <button class="btn btn-secondary" id="importBtn" title="Import Tour (JSON or HTML)">
         Import
       </button>
       <button class="btn btn-secondary" id="exportBtn" title="Export JSON">
@@ -389,7 +389,7 @@
 
   <!-- Hidden file inputs -->
   <input type="file" id="sceneUpload" accept="image/*" multiple style="display: none" />
-  <input type="file" id="importUpload" accept=".json" style="display: none" />
+  <input type="file" id="importUpload" accept=".json,.html,.htm" style="display: none" />
 
   <!-- Toast Notification -->
   <div class="toast" id="toast"></div>
@@ -405,18 +405,16 @@
         <p>Your tour is ready to export. Choose an export option:</p>
         <div class="export-info">
           <p>
-            <strong>JSON Only:</strong> Export tour configuration (for use
-            with SWT library)
+            <strong>JSON Only:</strong> Export tour configuration file (for use
+            with SWT library or to backup and re-import)
           </p>
           <p>
-            <strong>Viewer HTML:</strong> Export standalone HTML viewer with
-            embedded configuration
+            <strong>Viewer HTML:</strong> Export standalone single-file HTML viewer with
+            embedded scenes ready to publish
           </p>
         </div>
-        <textarea id="exportPreview" class="export-preview" readonly></textarea>
       </div>
       <div class="modal-footer">
-        <button id="copyJsonBtn" class="btn btn-secondary">Copy JSON</button>
         <button id="exportJsonBtn" class="btn btn-primary">
           Download JSON
         </button>

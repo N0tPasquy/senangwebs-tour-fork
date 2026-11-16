@@ -1747,6 +1747,77 @@ async function runTests() {
     assert(visualEl.hasAttribute('swt-hotspot-listener'), 'Standard hotspot has swt-hotspot-listener in viewer mode');
   }
 
+  // --- Test 40: Universal HTML export & import parsing and roundtrip integrity ---
+  console.log('\nTest 40: Universal HTML export & import parsing and roundtrip integrity');
+  {
+    const { default: ProjectStorageManager } = await import('../src/editor/js/storage-manager.js');
+    const storageManager = new ProjectStorageManager();
+
+    // 1. Test extraction from standard exported viewer HTML
+    const sampleExportedHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Grand Tour</title>
+    <script src="swt.min.js?v=1.0.22"></script>
+  </head>
+  <body>
+    <a-scene id="tour-container"></a-scene>
+    <script>
+      const tourConfig = {
+        "initialScene": "scene-hall",
+        "title": "Grand Villa Tour",
+        "description": "An immersive 360 exploration",
+        "scenes": [
+          {
+            "id": "scene-hall",
+            "name": "Grand Hall",
+            "panorama": "data:image/jpeg;base64,9j4AAQSkZJRg==",
+            "hotspots": [
+              {
+                "id": "hs-1",
+                "position": { "x": 1, "y": 0, "z": -3 },
+                "action": { "type": "gazeNavigate", "target": "scene-garden", "duration": 3000 },
+                "appearance": { "icon": "door", "color": "#ff5500" },
+                "tooltip": { "text": "To Garden {East Wing} & \\"Terrace\\"" }
+              }
+            ]
+          },
+          {
+            "id": "scene-garden",
+            "name": "Garden",
+            "panorama": "data:image/jpeg;base64,gardenImage==",
+            "hotspots": []
+          }
+        ],
+        "audio": { "url": "data:audio/mp3;base64,track", "volume": 0.7, "loop": true },
+        "welcome": { "enabled": true, "title": "Welcome to Villa", "description": "Enjoy the tour", "buttonText": "Explore" }
+      };
+      function startTour() {}
+    </script>
+  </body>
+</html>`;
+
+    const extracted = storageManager.extractTourConfigFromHtml(sampleExportedHtml);
+    assert(extracted !== null && typeof extracted === 'object', 'Tour configuration successfully extracted from HTML');
+    assert(extracted.initialScene === 'scene-hall', 'Initial scene resolved as scene-hall');
+    assert(extracted.title === 'Grand Villa Tour', 'Title resolved as Grand Villa Tour');
+    assert(extracted.scenes.length === 2, 'All 2 scenes extracted from HTML');
+    assert(extracted.scenes[0].hotspots[0].tooltip.text === 'To Garden {East Wing} & "Terrace"', 'Special characters and braces preserved in hotspot text');
+    assert(extracted.audio && extracted.audio.volume === 0.7, 'Audio settings preserved in extracted config');
+    assert(extracted.welcome && extracted.welcome.buttonText === 'Explore', 'Welcome settings preserved in extracted config');
+
+    // 2. Test error throwing when HTML does not contain a tour configuration
+    let threw = false;
+    try {
+      storageManager.extractTourConfigFromHtml('<!DOCTYPE html><html><body><h1>No tour here</h1></body></html>');
+    } catch (e) {
+      threw = true;
+      assert(e.message.includes('No virtual tour configuration found'), 'Informative error thrown when tourConfig is missing');
+    }
+    assert(threw, 'Invalid HTML throws error during extraction');
+  }
+
   console.log(`\n=== RESULTS: ${passCount} PASSED, ${failCount} FAILED ===\n`);
   if (failCount > 0) {
     process.exit(1);

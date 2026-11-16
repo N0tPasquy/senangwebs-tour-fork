@@ -1374,12 +1374,21 @@ const importUpload = document.getElementById('importUpload');
             initialSceneId = validScenes[0].id;
         }
 
+        const config = {
+            title: (data.config && data.config.title) || data.title || 'My Virtual Tour',
+            description: (data.config && data.config.description) || data.description || '',
+            initialSceneId
+        };
+
+        if (data.audio || (data.config && data.config.audio)) {
+            config.audio = data.audio || data.config.audio;
+        }
+        if (data.welcome || (data.config && data.config.welcome)) {
+            config.welcome = data.welcome || data.config.welcome;
+        }
+
         return {
-            config: {
-                title: (data.config && data.config.title) || data.title || 'My Virtual Tour',
-                description: (data.config && data.config.description) || data.description || '',
-                initialSceneId
-            },
+            config,
             scenes: validScenes
         };
     }
