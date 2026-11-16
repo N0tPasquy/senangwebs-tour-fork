@@ -12,7 +12,7 @@ package: senangwebs-tour
 - **Purpose**: 360-degree virtual tour viewer and visual editor built on A-Frame WebVR
 - **Entry**: `dist/swt.js`, `dist/swt-editor.js`
 - **Dependencies**: `@bookklik/senangstart-icons`; peer: `aframe ^1.7.1`
-- **Scripts**: `docker compose up -d` (production editor container), `npm run build` (rollup), `npm run dev` (rollup watch), `npm run serve` (http-server)
+- **Scripts**: `npm run build` (rollup), `npm run dev` (rollup watch), `npm run serve` (http-server), `npm run serve:https` (https http-server)
 
 ## Workflow
 

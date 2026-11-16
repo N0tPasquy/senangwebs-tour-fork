@@ -26,8 +26,8 @@ Both modes provide the same functionality but differ in setup complexity and fle
 | **Example**       | `examples/editor-declarative.html` | `examples/editor-simple.html`      |
 
 > [!TIP]
-> **Looking to run the complete Visual Editor instantly?**  
-> Run the pre-configured Docker setup: `docker compose up -d` and open `http://localhost:8089`. See [README.md](README.md#-quick-start--running-the-project) for full deployment instructions.
+> **Looking to run the complete Visual Editor locally?**  
+> Start the local development server with `npm run serve` and open `http://localhost:8089/examples/editor.html`. See [README.md](README.md#-quick-start--running-the-project) for full setup instructions.
 
 ## Quick Start
 

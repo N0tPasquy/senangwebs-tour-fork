@@ -19,8 +19,8 @@ A powerful, data-driven 360° virtual tour system built on A-Frame WebVR. Create
   - [Interactive 3D Hotspot Types](#interactive-3d-hotspot-types)
   - [Key Editor Features](#key-editor-features)
 - [Quick Start & Running the Project](#-quick-start--running-the-project)
-  - [Option 1: Docker (Recommended)](#option-1-docker-recommended)
-  - [Option 2: Local Node.js Development](#option-2-local-nodejs-development)
+  - [Prerequisites & Installation](#prerequisites--installation)
+  - [Development & Preview](#development--preview)
 - [Embedding the Tour (Viewer Library)](#-embedding-the-tour-viewer-library)
   - [Minimal HTML Integration](#minimal-html-integration)
   - [Tour Configuration Schema](#tour-configuration-schema)
@@ -80,58 +80,7 @@ Static photos preserve their natural aspect ratio (16:9, 4:3, 9:16 portrait) in 
 
 ## 🚀 Quick Start & Running the Project
 
-### Option 1: Docker (Recommended - No Code Required)
-
-> [!NOTE]
-> Ensure [Docker](https://www.docker.com/) is installed and running on your system (Docker Desktop for Windows/macOS or Docker Engine for Linux).
-
-Launch the **Visual 360° Tour Editor** immediately without cloning the repository or installing Node.js:
-
-#### Method A: Direct Command (Zero Files)
-Open your terminal and run:
-```bash
-docker run -d -p 8089:80 --name senangwebs-tour-editor ghcr.io/n0tpasquy/senangwebs-tour-fork:latest
-```
-
-#### Method B: Docker Compose
-Create a `docker-compose.yml` file (or use the one in this repository):
-```yaml
-services:
-  swt-editor:
-    image: ghcr.io/n0tpasquy/senangwebs-tour-fork:latest
-    container_name: senangwebs-tour-editor
-    ports:
-      - "${PORT:-8089}:80"
-    restart: unless-stopped
-```
-Then start the container:
-```bash
-docker compose up -d
-```
-
-#### 🌐 Accessing the Editor
-Open your browser at:
-👉 **`http://localhost:8089`**
-
-*(If port 8089 is already in use, customize it with `PORT=8090 docker compose up -d` or `-p 8090:80`).*
-
-> [!TIP]
-> **Testing on Mobile Devices (Wi-Fi):**  
-> You can open `http://<YOUR_PC_IP>:8089` from a smartphone connected to the same local Wi-Fi network to test touch navigation, scene transitions, and audio playback.  
-> **Gyroscope / VR Note:** Mobile browsers (iOS Safari & Android Chrome) strictly require a **Secure Context (HTTPS)** to enable device motion sensors (gyroscope look-controls) and WebXR. To test gyroscope motion on mobile, expose the container via an HTTPS tunnel (e.g. `npx localtunnel --port 8089` or `ngrok http 8089`), or use Option 2 with `npm run serve:https`.
-
-#### Stopping the Editor
-```bash
-# If run with Method A:
-docker stop senangwebs-tour-editor && docker rm senangwebs-tour-editor
-
-# If run with Method B:
-docker compose down
-```
-
----
-
-### Option 2: Local Node.js Development
+### Prerequisites & Installation
 
 Requires **Node.js 18+**:
 
@@ -147,21 +96,28 @@ Requires **Node.js 18+**:
    npm run build     # Compiles production bundles into dist/ (0 warnings)
    ```
 
-3. **Start local development server**:
+### Development & Preview
+
+1. **Start local development server**:
    ```bash
    npm run serve     # HTTP server on http://localhost:8089
    ```
    Open **`http://localhost:8089/examples/editor.html`**.
 
-4. **Start local server with HTTPS** *(for mobile phone testing on Wi-Fi)*:
+2. **Start local server with HTTPS** *(for mobile phone testing on Wi-Fi)*:
    ```bash
    npm run serve:https   # HTTPS server on https://localhost:8089
    ```
 
-5. **Run unit tests**:
+3. **Run unit tests**:
    ```bash
    npm test          # Runs all 205 automated unit tests
    ```
+
+> [!TIP]
+> **Testing on Mobile Devices (Wi-Fi):**  
+> You can open `http://<YOUR_PC_IP>:8089/examples/editor.html` (or `https://...`) from a smartphone connected to the same local Wi-Fi network to test touch navigation, scene transitions, and audio playback.  
+> **Gyroscope / VR Note:** Mobile browsers (iOS Safari & Android Chrome) strictly require a **Secure Context (HTTPS)** to enable device motion sensors (gyroscope look-controls) and WebXR. To test gyroscope motion on mobile, use `npm run serve:https` or expose the local server via an HTTPS tunnel (e.g. `npx localtunnel --port 8089` or `ngrok http 8089`).
 
 ---
 
@@ -299,4 +255,4 @@ Subscribe to tour events on the `<a-scene>` element using `tour.addEventListener
 ## 📄 License
 
 This project is open-source software licensed under the [MIT License](LICENSE.md).  
-Based on the original project by [A. Hakim](https://github.com/bookklik-technologies/senangwebs-tour), with enhancements and Docker integration by [N0tPasquy](https://github.com/N0tPasquy).
+Based on the original project by [A. Hakim](https://github.com/bookklik-technologies/senangwebs-tour), with enhancements by [N0tPasquy](https://github.com/N0tPasquy).
